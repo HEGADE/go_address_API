@@ -2,10 +2,10 @@ package views
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hegade/go_address_API/service"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type StateView interface {
@@ -19,47 +19,21 @@ type stateview struct {
 	service service.StateService
 }
 
-func NewStateView() StateView {
+func NewStateView(conn *pgxpool.Pool) StateView {
 	return &stateview{
-		service: service.NewStateService(),
+		service: service.NewStateService(conn),
 	}
 }
+
 func (s *stateview) Create(ctx *gin.Context) {
 	req := service.StateRequest{}
 	ctx.ShouldBind(&req)
 	v, err := s.service.Create(req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, "Error")
+		ctx.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-
 	ctx.JSON(http.StatusCreated, v)
-	return
-}
-
-func (s *stateview) Get(ctx *gin.Context) {
-	ID := ctx.Param("id")
-	ctx.JSON(http.StatusAccepted, ID)
-	return
-}
-
-func (s *stateview) Update(ctx *gin.Context) {
-	ID := ctx.Param("id")
-	req := stateRequest{}
-	ctx.ShouldBind(&req)
-	v, err := strconv.ParseInt(ID, 0, 8)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, "Invalid ID")
-		return
-	}
-	req.ID = v
-	ctx.JSON(http.StatusAccepted, req)
-	return
-}
-
-func (s *stateview) Delete(ctx *gin.Context) {
-	ID := ctx.Param("id")
-	ctx.JSON(http.StatusAccepted, ID)
 	return
 }
 
@@ -70,7 +44,42 @@ func (s *stateview) List(ctx *gin.Context) {
 	size := ctx.Query("size")
 	v, err := s.service.List(page, size)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, "Error")
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusAccepted, v)
+	return
+}
+
+func (s *stateview) Get(ctx *gin.Context) {
+	ID := ctx.Param("id")
+	v, err := s.service.Get(ID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusAccepted, v)
+	return
+}
+
+func (s *stateview) Update(ctx *gin.Context) {
+	req := service.StateRequest{}
+	ctx.ShouldBind(&req)
+	ID := ctx.Param("id")
+	v, err := s.service.Update(ID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusAccepted, v)
+	return
+}
+
+func (s *stateview) Delete(ctx *gin.Context) {
+	ID := ctx.Param("id")
+	v, err := s.service.Delete(ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 	ctx.JSON(http.StatusAccepted, v)
