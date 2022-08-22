@@ -59,13 +59,18 @@ func (s *stateService) Create(req StateRequest) (string, error) {
 
 func (s *stateService) List(page string, size string) ([]StateRequest, error) {
 	stateList := []StateRequest{}
+	if page == "" || size == "" {
+		return stateList, throwError("Page and Size cannot be empty")
+	}
 
 	totalCount, _ := strconv.ParseInt(size, 6, 12)
 	toStart, _ := strconv.ParseInt(page, 6, 12)
-	limit := (toStart - 1) * totalCount
-	offSet := toStart * totalCount
-	qry := fmt.Sprintf("select * from mst_state limit %d offset %d", limit, offSet)
-	Rows, err := s.conn.Query(context.Background(), qry)
+	offSet := (toStart - 1) * totalCount
+	limit := toStart * totalCount
+	fmt.Println(limit, offSet)
+	qry := fmt.Sprintf("select * from mst_state limit %d offset %d", 1, 1)
+	fmt.Println(qry)
+	Rows, err := s.conn.Query(context.Background(), "select * from mst_state")
 	if err != nil {
 		return nil, err
 	}
