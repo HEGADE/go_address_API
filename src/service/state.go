@@ -15,6 +15,7 @@ type StateService interface {
 	Update(string, StateRequest) (*StateRequest, error)
 	Delete(string) (string, error)
 	List(string, string) ([]StateRequest, error)
+	DeleteAll() (string, error)
 }
 type stateService struct {
 	conn *pgxpool.Pool
@@ -32,9 +33,9 @@ type errorString struct {
 func (e *errorString) Error() string {
 	return e.errorstring
 }
-func errorData(text string) error {
+func throwError(text string) error {
 	return &errorString{
-		errorstring: text,
+		text,
 	}
 }
 func NewStateService(conn *pgxpool.Pool) StateService {
@@ -46,7 +47,7 @@ func NewStateService(conn *pgxpool.Pool) StateService {
 func (s *stateService) Create(req StateRequest) (string, error) {
 	req.Name = strings.Trim(req.Name, " ")
 	if req.Name == "" {
-		return "", errorData("State name cannot be empty")
+		return "", throwError("State name cannot be empty")
 	}
 	cmdTag, err := s.conn.Exec(context.Background(), "insert into mst_state (name) values('"+req.Name+"')")
 	if err != nil {
@@ -80,7 +81,7 @@ func (s *stateService) List(page string, size string) ([]StateRequest, error) {
 func (s *stateService) Get(ID string) (*StateRequest, error) {
 	_, err := strconv.ParseInt(ID, 0, 8)
 	if err != nil {
-		return nil, errorData("Invalid ID")
+		return nil, throwError("Invalid ID")
 	}
 	Row, err := s.conn.Query(context.Background(), "select * from mst_state where id="+ID)
 	if err != nil {
@@ -88,7 +89,7 @@ func (s *stateService) Get(ID string) (*StateRequest, error) {
 	}
 	defer Row.Close()
 	if Row.CommandTag().RowsAffected() == 0 {
-		return nil, errorData("ID Not Found")
+		return nil, throwError("ID Not Found")
 	}
 	stateData := StateRequest{}
 	for Row.Next() {
@@ -103,18 +104,18 @@ func (s *stateService) Get(ID string) (*StateRequest, error) {
 func (s *stateService) Update(ID string, req StateRequest) (*StateRequest, error) {
 	_, err := strconv.ParseInt(ID, 0, 8)
 	if err != nil {
-		return nil, errorData("Invalid ID")
+		return nil, throwError("Invalid ID")
 	}
 	req.Name = strings.Trim(req.Name, " ")
 	if req.Name == "" {
-		return nil, errorData("State Name cannot be empty")
+		return nil, throwError("State Name cannot be empty")
 	}
 	cmdTag, err := s.conn.Exec(context.Background(), "update mst_state set name='"+req.Name+"' where id="+ID)
 	if err != nil {
 		return nil, err
 	}
 	if cmdTag.RowsAffected() == 0 {
-		return nil, errorData("ID Not Found")
+		return nil, throwError("ID Not Found")
 	}
 	req.ID, _ = strconv.ParseInt(ID, 0, 8)
 	return &req, nil
@@ -123,14 +124,25 @@ func (s *stateService) Update(ID string, req StateRequest) (*StateRequest, error
 func (s *stateService) Delete(ID string) (string, error) {
 	_, err := strconv.ParseInt(ID, 0, 8)
 	if err != nil {
-		return "", errorData("Invalid ID")
+		return "", throwError("Invalid ID")
 	}
 	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state where id="+ID)
 	if err != nil {
 		return "", err
 	}
 	if cmdTag.RowsAffected() == 0 {
-		return "", errorData("ID Not Found")
+		return "", throwError("ID Not Found")
+	}
+	return "deleted", nil
+}
+
+func (s *stateService) DeleteAll() (string, error) {
+	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state")
+	if err != nil {
+		return "", err
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return "", throwError("No Data Found")
 	}
 	return "deleted", nil
 }

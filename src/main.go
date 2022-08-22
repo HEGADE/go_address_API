@@ -17,5 +17,6 @@ func main() {
 	router.GET("/states/:id", s.Get)
 	router.PUT("/states/:id", s.Update)
 	router.DELETE("/states/:id", s.Delete)
+	router.DELETE("states/all", s.DeleteAll)
 	router.Run()
 }
