@@ -16,7 +16,7 @@ type StateService interface {
 	Update(string, StateRequest) (*StateRequest, error)
 	Delete(string) (string, error)
 	List(string, string) ([]StateRequest, error)
-	// DeleteAll() (string, error)
+	DeleteAll() (string, error)
 }
 type stateService struct {
 	conn *gorm.DB
