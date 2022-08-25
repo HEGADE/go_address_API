@@ -14,7 +14,7 @@ type StateView interface {
 	Update(ctx *gin.Context)
 	Delete(ctx *gin.Context)
 	List(ctx *gin.Context)
-	// DeleteAll(ctx *gin.Context)
+	DeleteAll(ctx *gin.Context)
 }
 type stateview struct {
 	service service.StateService
@@ -87,13 +87,13 @@ func (s *stateview) Delete(ctx *gin.Context) {
 	return
 }
 
-// func (s *stateview) DeleteAll(ctx *gin.Context) {
+func (s *stateview) DeleteAll(ctx *gin.Context) {
 
-// 	v, err := s.service.DeleteAll()
-// 	if err != nil {
-// 		ctx.JSON(http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
+	v, err := s.service.DeleteAll()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
 
-// 	ctx.JSON(http.StatusAccepted, gin.H{"msg": v})
-// }
+	ctx.JSON(http.StatusAccepted, gin.H{"msg": v})
+}

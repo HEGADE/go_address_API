@@ -134,13 +134,11 @@ func (s *stateService) Delete(ID string) (string, error) {
 	return "deleted", nil
 }
 
-// func (s *stateService) DeleteAll() (string, error) {
-// 	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state")
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	if cmdTag.RowsAffected() == 0 {
-// 		return "", throwError("No Data Found")
-// 	}
-// 	return "deleted", nil
-// }
+func (s *stateService) DeleteAll() (string, error) {
+	res := s.conn.Delete(&models.Mst_state{})
+	if res.RowsAffected == 0 {
+		return "", throwError("State not found")
+	}
+
+	return "All states deleted", nil
+}
