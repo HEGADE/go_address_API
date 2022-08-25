@@ -1,8 +1,8 @@
 package models
 
 // State..
-type State struct {
-	ID   int    `json:"ID"`
+type Mst_state struct {
+	ID   int64  `json:"ID"`
 	Name string `json:"Name"`
 }
 

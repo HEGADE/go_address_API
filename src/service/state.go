@@ -1,12 +1,13 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/gin-gonic/gin"
+	"github.com/hegade/go_address_API/models"
+	"gorm.io/gorm"
 )
 
 type StateService interface {
@@ -15,10 +16,11 @@ type StateService interface {
 	Update(string, StateRequest) (*StateRequest, error)
 	Delete(string) (string, error)
 	List(string, string) ([]StateRequest, error)
-	DeleteAll() (string, error)
+	// DeleteAll() (string, error)
 }
 type stateService struct {
-	conn *pgxpool.Pool
+	conn *gorm.DB
+	ctx  *gin.Context
 }
 
 type StateRequest struct {
@@ -38,7 +40,7 @@ func throwError(text string) error {
 		text,
 	}
 }
-func NewStateService(conn *pgxpool.Pool) StateService {
+func NewStateService(conn *gorm.DB) StateService {
 	return &stateService{
 		conn: conn,
 	}
@@ -46,74 +48,57 @@ func NewStateService(conn *pgxpool.Pool) StateService {
 
 func (s *stateService) Create(req StateRequest) (string, error) {
 	req.Name = strings.Trim(req.Name, " ")
+	incomingData := models.Mst_state{
+		Name: req.Name,
+	}
+	fmt.Println(req)
 	if req.Name == "" {
 		return "", throwError("State name cannot be empty")
 	}
-	cmdTag, err := s.conn.Exec(context.Background(), "insert into mst_state (name) values('"+req.Name+"')")
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(cmdTag)
+	result := s.conn.Create(&incomingData)
+	fmt.Println(result)
 	return "State Inserted", nil
 }
 
 func (s *stateService) List(page string, size string) ([]StateRequest, error) {
 	stateList := []StateRequest{}
-	if page == "" || size == "" {
-		return stateList, throwError("Page and Size cannot be empty")
-	}
+	// if page == "" || size == "" {
+	// 	return stateList, throwError("Page and Size cannot be empty")
+	// }
 
-	totalCount, _ := strconv.ParseInt(size, 6, 12)
-	toStart, _ := strconv.ParseInt(page, 6, 12)
-	offSet := (toStart - 1) * totalCount
-	limit := toStart * totalCount
-	fmt.Println(limit, offSet)
-	qry := fmt.Sprintf("select * from mst_state limit %d offset %d", 1, 1)
-	fmt.Println(qry)
-	Rows, err := s.conn.Query(context.Background(), "select * from mst_state")
-	if err != nil {
-		return nil, err
-	}
-	defer Rows.Close()
-	for Rows.Next() {
-		stateArray := StateRequest{}
-		err := Rows.Scan(&stateArray.ID, &stateArray.Name)
-		if err != nil {
-			return nil, err
-		}
-		stateList = append(stateList, stateArray)
-	}
-	if err != nil {
-		return nil, err
-	}
+	// totalCount, _ := strconv.ParseInt(size, 6, 12)
+	// toStart, _ := strconv.ParseInt(page, 6, 12)
+	// offSet := (toStart - 1) * totalCount
+	// limit := toStart * totalCount
+	s.conn.Find(&models.Mst_state{}).Scan(&stateList)
+	fmt.Println(stateList)
+
 	return stateList, nil
 }
 
 func (s *stateService) Get(ID string) (*StateRequest, error) {
 	_, err := strconv.ParseInt(ID, 0, 8)
+	data := models.Mst_state{}
 	if err != nil {
 		return nil, throwError("Invalid ID")
 	}
-	Row, err := s.conn.Query(context.Background(), "select * from mst_state where id="+ID)
-	if err != nil {
-		return nil, err
+	result := map[string]interface{}{}
+
+	stu := s.conn.Model(&data).Where("id = ?", ID).Scan(&result)
+	fmt.Println(result)
+	if stu.RowsAffected == 0 {
+		return nil, throwError("State not found")
+
 	}
-	defer Row.Close()
-	if Row.CommandTag().RowsAffected() == 0 {
-		return nil, throwError("ID Not Found")
-	}
-	stateData := StateRequest{}
-	for Row.Next() {
-		err = Row.Scan(&stateData.ID, &stateData.Name)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &stateData, nil
+	state := StateRequest{}
+	state.ID = result["id"].(int64)
+	state.Name = result["name"].(string)
+	return &state, nil
+
 }
 
 func (s *stateService) Update(ID string, req StateRequest) (*StateRequest, error) {
-	_, err := strconv.ParseInt(ID, 0, 8)
+	id, err := strconv.ParseInt(ID, 0, 8)
 	if err != nil {
 		return nil, throwError("Invalid ID")
 	}
@@ -121,39 +106,41 @@ func (s *stateService) Update(ID string, req StateRequest) (*StateRequest, error
 	if req.Name == "" {
 		return nil, throwError("State Name cannot be empty")
 	}
-	cmdTag, err := s.conn.Exec(context.Background(), "update mst_state set name='"+req.Name+"' where id="+ID)
-	if err != nil {
-		return nil, err
+
+	stateToUpdate := models.Mst_state{
+		ID: id,
 	}
-	if cmdTag.RowsAffected() == 0 {
-		return nil, throwError("ID Not Found")
+	res := s.conn.Model(&stateToUpdate).Update("name", req.Name)
+	if res.RowsAffected == 0 {
+		return nil, throwError("State not found")
 	}
-	req.ID, _ = strconv.ParseInt(ID, 0, 8)
+
 	return &req, nil
 }
 
 func (s *stateService) Delete(ID string) (string, error) {
-	_, err := strconv.ParseInt(ID, 0, 8)
+	id, err := strconv.ParseInt(ID, 0, 8)
 	if err != nil {
 		return "", throwError("Invalid ID")
 	}
-	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state where id="+ID)
-	if err != nil {
-		return "", err
+	stateToDelete := models.Mst_state{
+		ID: id,
 	}
-	if cmdTag.RowsAffected() == 0 {
-		return "", throwError("ID Not Found")
+	res := s.conn.Delete(&stateToDelete)
+	if res.RowsAffected == 0 {
+		return "", throwError("State not found")
 	}
+
 	return "deleted", nil
 }
 
-func (s *stateService) DeleteAll() (string, error) {
-	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state")
-	if err != nil {
-		return "", err
-	}
-	if cmdTag.RowsAffected() == 0 {
-		return "", throwError("No Data Found")
-	}
-	return "deleted", nil
-}
+// func (s *stateService) DeleteAll() (string, error) {
+// 	cmdTag, err := s.conn.Exec(context.Background(), "delete from mst_state")
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	if cmdTag.RowsAffected() == 0 {
+// 		return "", throwError("No Data Found")
+// 	}
+// 	return "deleted", nil
+// }

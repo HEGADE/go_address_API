@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hegade/go_address_API/service"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"gorm.io/gorm"
 )
 
 type StateView interface {
@@ -14,13 +14,13 @@ type StateView interface {
 	Update(ctx *gin.Context)
 	Delete(ctx *gin.Context)
 	List(ctx *gin.Context)
-	DeleteAll(ctx *gin.Context)
+	// DeleteAll(ctx *gin.Context)
 }
 type stateview struct {
 	service service.StateService
 }
 
-func NewStateView(conn *pgxpool.Pool) StateView {
+func NewStateView(conn *gorm.DB) StateView {
 	return &stateview{
 		service: service.NewStateService(conn),
 	}
@@ -87,13 +87,13 @@ func (s *stateview) Delete(ctx *gin.Context) {
 	return
 }
 
-func (s *stateview) DeleteAll(ctx *gin.Context) {
+// func (s *stateview) DeleteAll(ctx *gin.Context) {
 
-	v, err := s.service.DeleteAll()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
+// 	v, err := s.service.DeleteAll()
+// 	if err != nil {
+// 		ctx.JSON(http.StatusInternalServerError, err.Error())
+// 		return
+// 	}
 
-	ctx.JSON(http.StatusAccepted, gin.H{"msg": v})
-}
+// 	ctx.JSON(http.StatusAccepted, gin.H{"msg": v})
+// }
